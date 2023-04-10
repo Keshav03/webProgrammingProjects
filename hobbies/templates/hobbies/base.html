@@ -1,0 +1,69 @@
+{% load static %}
+
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <!-- Required meta tags -->
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+
+        <title> GROUP 20 Hobby app</title>
+
+        <link href="https://fonts.googleapis.com/css2?family=Pacifico&display=swap" rel="stylesheet">
+
+        <!-- Bootstrap CSS -->
+        <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.0/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-KyZXEAg3QhqLMpG8r+8fhAXLRk2vvoC2f3B09zVXn8CA5QIVfZOJ3BCsw2P0p/We" crossorigin="anonymous">
+
+        <!-- Font Awesome -->
+        <link rel="stylesheet" href="https://use.fontawesome.com/releases/v5.6.3/css/all.css">
+
+        <!-- sweet alert JS -->
+        <script src="//cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
+        <script src="https://unpkg.com/vue@next"></script>
+
+
+
+        {% block css %}
+        {% endblock %}
+
+        <style>
+            body {
+              background-image: url('../static/images/Group20.png');
+              background-repeat: no-repeat;
+                background-attachment: fixed;
+                background-size: cover;
+            }
+            #app {
+              background-color: lightblue ;
+              padding: 20px;
+              position:relative;
+              left:-10%;top:2px;  
+            }
+            .form-control{
+               
+              background-color: lightblue ;
+              
+            }
+        </style>
+    </head>
+    <body data-spy="scroll" data-target="#navbar-nav-header" >
+          {% include 'hobbies/components/navbar.html' %} 
+
+        <div class='container p-3'>
+        {% block content %}
+        {% endblock %}
+        </div>
+
+        <!-- Bootstrap Bundle with Popper -->
+        <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.0/dist/js/bootstrap.bundle.min.js" integrity="sha384-U1DAWAznBHeqEIlVSCgzq+c9gqGAJn5c/t99JyeKa9xxaYpSvHU5awsuZVVFIhvj" crossorigin="anonymous"></script>
+    
+
+        {% block scripts %}
+        {% endblock %}
+
+    </body>
+</html>
+
+
+

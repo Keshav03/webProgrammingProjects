@@ -1,0 +1,219 @@
+{% extends "hobbies/base.html" %} 
+{% load static %} 
+{% block content %}
+<div id="app">
+    {% csrf_token %}
+    <div
+      style="
+        width: 100px;
+        height: 100px;
+        border: 1px solid rgba(0, 0, 0, 0.3);
+        background: rgba(0, 0, 0, 0.3);
+        border-radius: 50px;
+        display: flex;
+        justify-content: center !important;
+        align-items: center;
+        font-size: 12px;
+      "
+    >
+      <figure>
+        <img
+          :src=loggedUser.image
+          alt="Profile picture"
+          id="image"
+          style="
+            width: 100px;
+            height: 100px;
+            object-fit: cover;
+            border-radius: 50px;
+          "
+        />
+      </figure>
+    </div>
+    <div style="width: max-content">
+      <label for="image">Upload Image:</label><br />
+      <input type="file" class="form-control" @change="onFileSelected"/>
+    </div>
+    <div class="form-control" style="width: 100%; margin-top: 10px">
+      <label for="username">Username: </label><br />
+      <p> [[ loggedUser.name ]]</p>
+    </div>
+    <div class="form-control" style="width: 100%; margin-top: 10px">
+      <label for="email">Email: </label><br />
+      <input
+        type="text"
+        name="email"
+        id="email"
+      />
+    </div>
+    <div class="form-control" style="width: 100%; margin-top: 10px">
+      <label for="city">City: </label><br />
+      <input
+        type="text"
+        name="city"
+        id="city"
+      />
+    </div>
+    <div class="form-control" style="width: 100%; margin-top: 10px">
+      <label for="dob">D.O.B: </label><br />
+      <input type="date" name="dob" id="dob" />
+    </div>
+
+    <div class="form-control" style="width: 50%; margin-top: 10px">
+      <label for="allHobbies">
+        All created hobbies:
+        <ul v-for="hobby in allHobbies">
+          <li>
+            [[ hobby.name ]]
+          </li>
+        </ul>
+        <input type="text" id="newHobby" placeholder="New hobby name..."> 
+        <button name ="newHobbyButton" @click="newHobby(this.loggedUser)">New hobby</button>
+      </label>
+    </div>
+
+    <div class="form-control" style="width: 50%; margin-top: 10px">
+      <label for="hobbies"
+        >Hobbies:
+        <ul v-for="hobby in loggedUser.hobbies">
+          <li><button  :name = [[hobby]]  type="button" class="btn btn-primary" style="
+            border: 1px solid rgba(0, 0, 0, 0.3) !important;
+            outline: none !important;
+          " 
+          @click="removeHobby(this.loggedUser, hobby)">
+          [[ hobby ]] <span class="badge badge-light">x</span>
+          </button></li>
+        </ul>
+      </label>
+
+      <br />
+      <select id="hobbies">
+        <option value="" selected>Select a hobby</option>
+        <option v-for="hobby in allHobbies">[[hobby.name]]</option>
+      </select>
+    </div>
+    <div class="form-control" style="width: 100%; margin-top: 10px">
+      <button name ="saveChanges"
+        style="
+          border: 1px solid rgba(0, 0, 0, 0.3) !important;
+          outline: none !important;
+        "
+        @click="updateInfo(this.loggedUser)">
+        Save changes
+      </button>
+    </div>
+</div>
+
+
+
+<script>
+  let myApp = Vue.createApp({
+    delimiters: ["[[", "]]"],
+    data() {
+      return {
+        loggedUser: {},
+        allHobbies: [],
+        selectedFile: null
+      };
+    },
+    async created() {
+      let profilesResponse = await fetch("{% url 'profiles api' %}");
+      if (profilesResponse.ok) {
+        let profilesData = await profilesResponse.json();
+        this.loggedUser = profilesData.loggedUser;
+        this.allHobbies = profilesData.hobbies;
+        document.getElementById("dob").value = this.loggedUser.DoB;
+        document.getElementById("city").value = this.loggedUser.city;
+        document.getElementById("email").value = this.loggedUser.email;
+      } else {
+        alert("Failed to load hobbies");
+      }
+    },
+    methods: {
+        async removeHobby(profile, hobby) {
+          let response = await fetch(profile.api, {
+            method: "DELETE",
+            headers: {
+              "X-CSRFToken": document.querySelector("[name=csrfmiddlewaretoken]").value,
+            },
+            body: JSON.stringify({"hobbyToDelete": hobby})
+          });
+          if (response.ok) {
+            let profilesResponse = await fetch("{% url 'profiles api' %}");
+            if (profilesResponse.ok) {
+              let profilesData = await profilesResponse.json();
+              this.loggedUser = profilesData.loggedUser;
+            }
+          else {
+            alert("cannot remove hobby")
+          }
+        }},
+
+        async updateInfo(profile) {
+          email = document.getElementById("email").value;
+          city = document.getElementById("city").value;
+          dob = document.getElementById("dob").value;
+          hobby = document.getElementById("hobbies").value;
+          let response = await fetch(profile.api, {
+            method: "PUT",
+            headers: {
+              "X-CSRFToken": document.querySelector("[name=csrfmiddlewaretoken]").value,
+            },
+            body: JSON.stringify({"email": email, "city": city, "dob": dob, "hobby": hobby, "image": this.selectedFile})
+          });
+          if (response.ok) {
+            let profilesResponse = await fetch("{% url 'profiles api' %}");
+              if (profilesResponse.ok) {
+              let profilesData = await profilesResponse.json();
+              this.loggedUser = profilesData.loggedUser;}
+          }
+          else {
+            alert("Failed to update info")
+          }
+        },
+
+        async newHobby(profile) {
+          newHobby = document.getElementById("newHobby").value
+          if (newHobby != "") {
+            let response = await fetch(profile.api, {
+              method: "POST",
+              headers: {
+                "X-CSRFToken": document.querySelector("[name=csrfmiddlewaretoken]").value,
+              },
+              body: JSON.stringify({"hobby": newHobby})
+            });
+            if (response.ok) {
+              document.getElementById("newHobby").value = "";
+              let profilesResponse = await fetch("{% url 'profiles api' %}");
+              if (profilesResponse.ok) {
+                let profilesData = await profilesResponse.json();
+                this.allHobbies = profilesData.hobbies;
+              }
+            }
+            else {
+              alert("Could not create new hobby")
+            }
+          }
+        },
+
+
+        onFileSelected(e) {
+          var selectedFile = event.target.files[0]
+          this.createProfileImage(selectedFile);
+        },
+
+        createProfileImage(file) {
+          var file_reader = new FileReader();
+          file_reader.readAsDataURL(file);
+          file_reader.onload = (e) => {
+            this.selectedFile = e.target.result;
+          };
+        },
+      }
+
+      
+  });
+
+  myApp.mount("#app");
+</script>
+{%endblock %}

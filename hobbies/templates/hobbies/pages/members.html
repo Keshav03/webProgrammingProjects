@@ -1,0 +1,345 @@
+
+{% extends "hobbies/base.html" %}
+{% load static %}
+
+{% block content %}
+    <div id="app">
+
+    <p> Logged user: {{user.username }}</p>
+
+    {% csrf_token %}
+
+    <table>
+        <thead>
+            <th scope="col">List of Members</th>
+        </thead>
+        <tbody>
+            <tr v-for="user in listOfUsers">
+                <td>
+                    [[user.username]]
+                </td>
+                <td>
+                    <button v-if="!checkFriendsList(user)" class="btn btn-secondary" @click="sendRequest(user.id)"> Add Friend</button>
+                </td>
+            </tr>
+        </tbody>
+    </table>
+
+    <table>
+        <thead>
+            <th scope="col">List of Friends</th>
+        </thead>
+        <tbody>
+            <tr v-for="friend,index in friendsList">
+                <td>
+                    [[friend.username]]
+                </td>
+                <td>
+                    <button class="btn btn-danger" @click="removeFriend(friend.id)"> Remove</button>
+                </td>
+            </tr>
+        </tbody>
+    </table>
+
+    <table>
+        <thead>
+            <th scope="col">Friends Requests</th>
+        </thead>
+        <tbody>
+            <tr v-for="request,index in friendRequestList">
+                <td>
+                    [[request.sender.username]]
+                </td>
+                <td>
+                    <button class="btn btn-success"  @click="acceptRequest(request.id)"> Accept</button> <button class="btn btn-warning" @click = "declineRequest(request.id)"> Decline</button>
+                </td>
+            </tr>
+        </tbody>
+    </table>
+
+    <table class="table" id="myTable">
+        <thead>
+            <th scope="col">Index</th>
+            <th scope="col">Username</th>
+            <th scope="col">Hobbies</th>
+            <th scope="col">Age <br><input size="2" v-model="ByAgeMin" id="intLimitTextBoxMin"> - <input size="2" v-model="ByAgeMax" id="intLimitTextBoxMax"></th>
+            <th scope="col">City <br><input size="15" type="text" v-model="ByCity" placeholder="Filter by city..."> </th>
+        </thead>
+        <tbody>
+            <tr v-for="(profile, index) in filteredList">
+                <td>
+                    [[ index ]]
+                </td>
+                <td>
+                   [[ profile.name ]] 
+                </td>
+                <td>
+                    <div v-for="hobby in profile.hobbies">
+                    [[ hobby ]]
+                    </div>
+                </td>
+                <td>
+                    [[ profile.DoB ]]
+                </td>
+                <td v-if="profile.city">
+                    [[ profile.city ]]
+                </td>
+                <td v-else>
+                    N/A
+                </td>
+            </tr>
+        </tbody>
+    </table>
+    </div>
+
+    <script>
+        let myApp = Vue.createApp({
+            delimiters: ["[[","]]"],
+            data() {
+                return {
+                    ByCity: '',
+                    ByAgeMin: 0,
+                    ByAgeMax: 100,
+                    profiles: [],
+                    loggedUser: {},
+                    friendRequestList:[],
+                    friendsList:[],
+                    listOfUsers:[]
+                }
+            },
+            async created() {
+                let profilesResponse = await fetch("{% url 'profiles api' %}");
+                if (profilesResponse.ok) {
+                    let profilesData = await profilesResponse.json();
+                    profilesData.profiles.forEach(element => {
+                        element.DoB = getAge(element.DoB)
+                    });
+                    this.profiles = profilesData.profiles;
+                    this.loggedUser = profilesData.loggedUser;
+
+                    arrangeArray(this.profiles, this.loggedUser)
+                }
+                else {
+                    alert("Failed to load profiles")
+                }
+
+                let response = await fetch("{% url 'users api' %}")
+                    if (response.ok) {
+                        let data = await response.json();
+                        this.listOfUsers = data.users
+                    }
+                    else {
+                        alert("Failed to make request");
+                    }
+                
+                response = await fetch("{% url 'friendRequest api' %}")
+                    if (response.ok) {
+                        let data = await response.json();
+                        this.friendRequestList =  data.request
+                    }
+                    else {
+                        alert("Failed to make request");
+                    }
+            
+                response = await fetch("{% url 'viewFriends api' %}")
+                    if (response.ok) {
+                        let data = await response.json();
+                        this.friendsList =  data.friends
+                    }
+                    else {
+                        alert("Failed to make request");
+                    }
+            },
+            methods: {
+                checkFriendsList(user){
+                    for (friend of this.friendsList){
+                        if(friend.username == user.username){
+                            return true
+                        }
+                    }
+                    return
+                },
+
+                async sendRequest(uid){
+                    const formData = new FormData();
+                    formData.append('receiverUserID', uid);
+                    let response = await fetch("{% url 'send request api' %}",{
+                        method: "POST",
+                        headers: {
+                            "X-CSRFToken": document.querySelector("[name=csrfmiddlewaretoken").value,
+                        },
+                        body:formData
+                })
+                    if (response.ok) {
+                        Swal.fire({
+                            icon: 'success',
+                            title: 'Request sent'
+                        })
+
+                    }    
+                    else {
+                        alert("Failed to send request");
+                    }
+                },
+
+                async acceptRequest(fid){
+                    const formData = new FormData();
+                    formData.append('requestID', fid);
+                    let response = await fetch("{% url 'acceptRequest api' %}",{
+                        method: "POST",
+                        headers: {
+                            "X-CSRFToken": document.querySelector("[name=csrfmiddlewaretoken").value,
+                        },
+                        body:formData
+                })
+                    if (response.ok) {
+                        response = await fetch("{% url 'viewFriends api' %}")
+                            if (response.ok) {
+                                let data = await response.json();
+                                this.friendsList =  data.friends
+                            }
+                            else {
+                                alert("Failed to make request");
+                            }
+                        response = await fetch("{% url 'friendRequest api' %}")
+                            if (response.ok) {
+                                let data = await response.json();
+                                this.friendRequestList =  data.request
+                            }
+                            else {
+                                alert("Failed to make request");
+                            }
+                    }    
+                    else {
+                        alert("Failed to accept request");
+                    }
+                },
+
+                async declineRequest(fid){
+                    const formData = new FormData()
+                    formData.append("requestID",fid)
+                    let response = await fetch("{% url 'declineRequest api' %}",{
+                        method: "POST",
+                        headers: {
+                               "X-CSRFToken": document.querySelector("[name=csrfmiddlewaretoken").value,
+                        },
+                        body:formData
+                    })
+                    if (response.ok) {
+                        response = await fetch("{% url 'friendRequest api' %}")
+                            if (response.ok) {
+                                let data = await response.json();
+                                this.friendRequestList =  data.request
+                            }
+                            else {
+                                alert("Failed to make request");
+                            }
+                    }    
+                    else {
+                        alert("Failed to decline request");
+                    }
+                },
+
+                async removeFriend(fid){
+                    const formData = new FormData();
+                    formData.append("friendID",fid)
+                    let response = await fetch("{% url 'removeFriend api' %}",{
+                        method: "DELETE",
+                        headers: {
+                               "X-CSRFToken": document.querySelector("[name=csrfmiddlewaretoken").value,
+                        },
+                        body:JSON.stringify({
+                            friendID:fid
+                        })
+                    })
+                    if (response.ok) {
+                        response = await fetch("{% url 'viewFriends api' %}")
+                        if (response.ok) {
+                            let data = await response.json();
+                            this.friendsList =  data.friends
+                        }
+                        else {
+                            alert("Failed to make request");
+                        }
+                        response = await fetch("{% url 'users api' %}")
+                        if (response.ok) {
+                            let data = await response.json();
+                            this.listOfUsers = data.users
+                        }
+                        else {
+                            alert("Failed to make request");
+                        }
+                    }    
+                    else {
+                        alert("Failed to remove friend!");
+                    }
+                },
+                
+                filterByAge: function(profiles) {
+                    return profiles.filter(profile => (profile.DoB > String(this.ByAgeMin) && profile.DoB < String(this.ByAgeMax)) ? profile : '')
+                },
+
+                filterByCity: function(profiles) {
+                    return profiles.filter(profile => !profile.city.toUpperCase().indexOf(this.ByCity.toUpperCase()))
+                }
+            },
+            computed: {
+                filteredList() {
+                    return this.filterByAge(this.filterByCity(this.profiles))
+                }
+            }
+        })
+
+        myApp.mount('#app')
+
+    function getAge(dateString) {
+        if (dateString == null) {
+            return "N/A"
+        }
+        var today = new Date();
+        var birthDate = new Date(dateString);
+        var age = today.getFullYear() - birthDate.getFullYear();
+        var m = today.getMonth() - birthDate.getMonth();
+        if (m < 0 || (m === 0 && today.getDate() < birthDate.getDate())) {
+            age--;
+        }
+        return age;
+    }
+
+    function arrangeArray(otherUsersHobbies, loggedInUserHobbies) {
+
+        for(i=0; i<otherUsersHobbies.length; i++){
+            var array1 = otherUsersHobbies[i]['hobbies'];
+            var array2 = loggedInUserHobbies['hobbies'];
+            const commonArray = array1.filter(value => array2.includes(value))
+            var affinity = commonArray.length;
+            otherUsersHobbies[i]['affinity'] = affinity
+        }
+        otherUsersHobbies.sort((a, b) => b.affinity - a.affinity);
+    }
+
+    // Restricts input for the given textbox to the given inputFilter.
+    function setInputFilter(textbox, inputFilter) {
+    ["input", "keydown", "keyup", "mousedown", "mouseup", "select", "contextmenu", "drop"].forEach(function(event) {
+        textbox.addEventListener(event, function() {
+        if (inputFilter(this.value)) {
+            this.oldValue = this.value;
+            this.oldSelectionStart = this.selectionStart;
+            this.oldSelectionEnd = this.selectionEnd;
+        } else if (this.hasOwnProperty("oldValue")) {
+            this.value = this.oldValue;
+            this.setSelectionRange(this.oldSelectionStart, this.oldSelectionEnd);
+        } else {
+            this.value = "";
+        }
+        });
+    });
+    }
+
+    setInputFilter(document.getElementById("intLimitTextBoxMin"), function(value) {
+        return /^\d*$/.test(value) && (value === "" || parseInt(value) <= 100); });
+
+    setInputFilter(document.getElementById("intLimitTextBoxMax"), function(value) {
+        return /^\d*$/.test(value) && (value === "" || parseInt(value) <= 100); });
+    </script>
+{% endblock %}
